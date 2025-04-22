@@ -12,15 +12,16 @@ int main(int argc, char* argv[])
 {
 	const char* keys =
 	{
-		"{ hog          |1                   | number of test case: 0 - Test KCF | }"
-		"{ fixed_window |0                   | Left coordinate of the object | }"
-		"{ singlescale  |0                   | Top coordinate of the object | }"
-		"{ show         |1                   | Width of the bounding box | }"
-		"{ lab          |0                   | Height of the bounding box | }"
-		"{ gray         |0                   | Path to the folder with results | }"
-		"{ images       |images.txt          | Path to the folder with results | }"
-		"{ region       |region.txt          | Path to the folder with results | }"
-		"{ output       |output.txt          | Path to the folder with results | }"
+		"{ hog          |1                   | Use HOG features | }"
+		"{ fixed_window |0                   | Use fixed window | }"
+		"{ singlescale  |0                   | Use single or multiscale | }"
+		"{ show         |1                   | Show result or silent run | }"
+		"{ lab          |0                   | Use Lab color space with HOG | }"
+		"{ gray         |0                   | Use gray color space (without HOG) and raw pixels | }"
+		"{ images       |images.txt          | Path to the txt file with frames names | }"
+		"{ region       |region.txt          | Path to the txt file with ground truth | }"
+		"{ output       |output.txt          | Path to the txt file with results | }"
+		"{ logs         |0                   | More debug logs into cout | }"
 	};
 	cv::CommandLineParser parser(argc, argv, keys);
 	parser.printMessage();
@@ -41,9 +42,10 @@ int main(int argc, char* argv[])
 		LAB = false;
 		std::cout << "gray is true: hog == " << HOG << ", LAB == " << LAB << std::endl;
 	}
+	bool debugLogs = parser.get<int>("logs") != 0;
 	
 	// Create KCFTracker object
-	KCFTracker tracker(HOG, FIXEDWINDOW, MULTISCALE, LAB);
+	KCFTracker tracker(HOG, FIXEDWINDOW, MULTISCALE, LAB, debugLogs);
 
   	// Read groundtruth for the 1st frame
   	std::ifstream groundtruthFile;
@@ -121,7 +123,8 @@ int main(int argc, char* argv[])
 
 		cv::Rect gtRect = GetRectFromFile();
 
-		std::cout << "Ground truth " << gtRect << " on frame " << frame.size() << std::endl;
+		std::cout << "\n_______________________________________________________________________" << std::endl;
+		std::cout << nFrames << ": Ground truth " << gtRect << " on frame " << frame.size() << std::endl;
 
 		// First frame, give the groundtruth to the tracker
 		if (nFrames == 0)
@@ -132,9 +135,10 @@ int main(int argc, char* argv[])
 		// Update
 		else
 		{
-			cv::Rect result = tracker.update(frame);
+			float confidence = 0.f;
+			cv::Rect result = tracker.update(frame, confidence);
 
-			std::cout << "Detected rect " << result << ", IoU = " << ((gtRect & result).area() / (float)(gtRect | result).area()) << std::endl;
+			std::cout << "Detected rect " << result << ", conf = " << confidence << ", IoU = " << ((gtRect & result).area() / (float)(gtRect | result).area()) << std::endl;
 
 			cv::rectangle(frame, result.tl(), result.br(), cv::Scalar(255, 0, 255), 1, 8);
 			resultsFile << result.x << "," << result.y << "," << result.width << "," << result.height << std::endl;
