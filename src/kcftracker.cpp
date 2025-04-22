@@ -91,69 +91,75 @@ the use of this software, even if advised of the possibility of such damage.
 // Constructor
 KCFTracker::KCFTracker(bool hog, bool fixed_window, bool multiscale, bool lab)
 {
-
-    // Parameters equal in all cases
-    lambda = 0.0001;
-    padding = 2.5; 
-    //output_sigma_factor = 0.1;
-    output_sigma_factor = 0.125;
-
-
-    if (hog) {    // HOG
+    if (hog)
+    {
+        // HOG
         // VOT
-        interp_factor = 0.012;
-        sigma = 0.6; 
+        interp_factor = 0.012f;
+        sigma = 0.6f;
         // TPAMI
         //interp_factor = 0.02;
         //sigma = 0.5; 
         cell_size = 4;
         _hogfeatures = true;
 
-        if (lab) {
-            interp_factor = 0.005;
-            sigma = 0.4; 
+        if (lab)
+        {
+            interp_factor = 0.005f;
+            sigma = 0.4f;
             //output_sigma_factor = 0.025;
-            output_sigma_factor = 0.1;
+            output_sigma_factor = 0.1f;
 
             _labfeatures = true;
             _labCentroids = cv::Mat(nClusters, 3, CV_32FC1, &data);
             cell_sizeQ = cell_size*cell_size;
         }
-        else{
+        else
+        {
             _labfeatures = false;
         }
     }
-    else {   // RAW
+    else
+    {
+        // RAW
         interp_factor = 0.075;
         sigma = 0.2; 
         cell_size = 1;
         _hogfeatures = false;
 
-        if (lab) {
+        if (lab)
+        {
             printf("Lab features are only used with HOG features.\n");
             _labfeatures = false;
         }
     }
 
-
-    if (multiscale) { // multiscale
+    if (multiscale)
+    {
+        // multiscale
         template_size = 96;
         //template_size = 100;
         scale_step = 1.05;
         scale_weight = 0.95;
-        if (!fixed_window) {
+        if (!fixed_window)
+        {
             //printf("Multiscale does not support non-fixed window.\n");
             fixed_window = true;
         }
     }
-    else if (fixed_window) {  // fit correction without multiscale
-        template_size = 96;
-        //template_size = 100;
-        scale_step = 1;
-    }
-    else {
-        template_size = 1;
-        scale_step = 1;
+    else
+    {
+        if (fixed_window)
+        {  // fit correction without multiscale
+            template_size = 96;
+            //template_size = 100;
+            scale_step = 1;
+        }
+        else
+        {
+            template_size = 1;
+            scale_step = 1;
+        }
     }
 }
 
@@ -356,8 +362,8 @@ cv::Mat KCFTracker::getFeatures(const cv::Mat & image, bool inithann, float scal
             else
                 _scale = padded_h / (float) template_size;
 
-            _tmpl_sz.width = padded_w / _scale;
-            _tmpl_sz.height = padded_h / _scale;
+            _tmpl_sz.width = cvRound(padded_w / _scale);
+            _tmpl_sz.height = cvRound(padded_h / _scale);
         }
         else {  //No template size given, use ROI size
             _tmpl_sz.width = padded_w;
@@ -387,12 +393,12 @@ cv::Mat KCFTracker::getFeatures(const cv::Mat & image, bool inithann, float scal
         }
     }
 
-    extracted_roi.width = scale_adjust * _scale * _tmpl_sz.width;
-    extracted_roi.height = scale_adjust * _scale * _tmpl_sz.height;
+    extracted_roi.width = cvRound(scale_adjust * _scale * _tmpl_sz.width);
+    extracted_roi.height = cvRound(scale_adjust * _scale * _tmpl_sz.height);
 
     // center roi with new size
-    extracted_roi.x = cx - extracted_roi.width / 2;
-    extracted_roi.y = cy - extracted_roi.height / 2;
+    extracted_roi.x = cvRound(cx - extracted_roi.width / 2);
+    extracted_roi.y = cvRound(cy - extracted_roi.height / 2);
 
     cv::Mat FeaturesMap;  
     cv::Mat z = RectTools::subwindow(image, extracted_roi, cv::BORDER_REPLICATE);
@@ -403,9 +409,8 @@ cv::Mat KCFTracker::getFeatures(const cv::Mat & image, bool inithann, float scal
 
     // HOG features
     if (_hogfeatures) {
-        IplImage z_ipl = z;
         CvLSVMFeatureMapCaskade *map;
-        getFeatureMaps(&z_ipl, cell_size, &map);
+        getFeatureMaps(z, cell_size, &map);
         normalizeAndTruncate(map,0.2f);
         PCAFeatureMaps(map);
         size_patch[0] = map->sizeY;
@@ -419,7 +424,7 @@ cv::Mat KCFTracker::getFeatures(const cv::Mat & image, bool inithann, float scal
         // Lab features
         if (_labfeatures) {
             cv::Mat imgLab;
-            cvtColor(z, imgLab, CV_BGR2Lab);
+            cvtColor(z, imgLab, cv::COLOR_BGR2Lab);
             unsigned char *input = (unsigned char*)(imgLab.data);
 
             // Sparse output vector
@@ -451,7 +456,7 @@ cv::Mat KCFTracker::getFeatures(const cv::Mat & image, bool inithann, float scal
                                 }
                             }
                             // Store result at output
-                            outputLab.at<float>(minIdx, cntCell) += 1.0 / cell_sizeQ; 
+                            outputLab.at<float>(minIdx, cntCell) += 1.0f / cell_sizeQ; 
                             //((float*) outputLab.data)[minIdx * (size_patch[0]*size_patch[1]) + cntCell] += 1.0 / cell_sizeQ; 
                         }
                     }
@@ -485,9 +490,9 @@ void KCFTracker::createHanningMats()
     cv::Mat hann2t = cv::Mat(cv::Size(1,size_patch[0]), CV_32F, cv::Scalar(0)); 
 
     for (int i = 0; i < hann1t.cols; i++)
-        hann1t.at<float > (0, i) = 0.5 * (1 - std::cos(2 * 3.14159265358979323846 * i / (hann1t.cols - 1)));
+        hann1t.at<float > (0, i) = 0.5f * (1 - std::cos(2 * 3.14159265358979323846 * i / (hann1t.cols - 1)));
     for (int i = 0; i < hann2t.rows; i++)
-        hann2t.at<float > (i, 0) = 0.5 * (1 - std::cos(2 * 3.14159265358979323846 * i / (hann2t.rows - 1)));
+        hann2t.at<float > (i, 0) = 0.5f * (1 - std::cos(2 * 3.14159265358979323846 * i / (hann2t.rows - 1)));
 
     cv::Mat hann2d = hann2t * hann1t;
     // HOG features

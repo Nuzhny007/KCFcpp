@@ -3,66 +3,56 @@
 #include <sstream>
 #include <algorithm>
 
-#include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/opencv.hpp>
 
 #include "kcftracker.hpp"
 
-#include <dirent.h>
+int main(int argc, char* argv[])
+{
+	const char* keys =
+	{
+		"{ hog          |1                   | number of test case: 0 - Test KCF | }"
+		"{ fixed_window |0                   | Left coordinate of the object | }"
+		"{ singlescale  |0                   | Top coordinate of the object | }"
+		"{ show         |1                   | Width of the bounding box | }"
+		"{ lab          |0                   | Height of the bounding box | }"
+		"{ gray         |0                   | Path to the folder with results | }"
+		"{ images       |images.txt          | Path to the folder with results | }"
+		"{ region       |region.txt          | Path to the folder with results | }"
+		"{ output       |output.txt          | Path to the folder with results | }"
+	};
+	cv::CommandLineParser parser(argc, argv, keys);
+	parser.printMessage();
 
-using namespace std;
-using namespace cv;
-
-int main(int argc, char* argv[]){
-
-	if (argc > 5) return -1;
-
-	bool HOG = true;
-	bool FIXEDWINDOW = false;
-	bool MULTISCALE = true;
-	bool SILENT = true;
-	bool LAB = false;
-
-	for(int i = 0; i < argc; i++){
-		if ( strcmp (argv[i], "hog") == 0 )
-			HOG = true;
-		if ( strcmp (argv[i], "fixed_window") == 0 )
-			FIXEDWINDOW = true;
-		if ( strcmp (argv[i], "singlescale") == 0 )
-			MULTISCALE = false;
-		if ( strcmp (argv[i], "show") == 0 )
-			SILENT = false;
-		if ( strcmp (argv[i], "lab") == 0 ){
-			LAB = true;
-			HOG = true;
-		}
-		if ( strcmp (argv[i], "gray") == 0 )
-			HOG = false;
+	bool HOG = parser.get<int>("hog") != 0;
+	bool FIXEDWINDOW = parser.get<int>("fixed_window") != 0;
+	bool MULTISCALE = parser.get<int>("singlescale") == 0;
+	bool SILENT = parser.get<int>("show") == 0;
+	bool LAB = parser.get<int>("lab") != 0;
+	if (LAB)
+	{
+		HOG = true;
+		std::cout << "Lab is true: hog == " << HOG << std::endl;
+	}
+	if (parser.get<int>("gray") != 0)
+	{
+		HOG = false;
+		LAB = false;
+		std::cout << "gray is true: hog == " << HOG << ", LAB == " << LAB << std::endl;
 	}
 	
 	// Create KCFTracker object
 	KCFTracker tracker(HOG, FIXEDWINDOW, MULTISCALE, LAB);
 
-	// Frame readed
-	Mat frame;
-
-	// Tracker results
-	Rect result;
-
-	// Path to list.txt
-	ifstream listFile;
-	string fileName = "images.txt";
-  	listFile.open(fileName);
-
   	// Read groundtruth for the 1st frame
-  	ifstream groundtruthFile;
-	string groundtruth = "region.txt";
+  	std::ifstream groundtruthFile;
+	std::string groundtruth = parser.get<std::string>("region");
   	groundtruthFile.open(groundtruth);
-  	string firstLine;
-  	getline(groundtruthFile, firstLine);
+  	std::string firstLine;
+  	std::getline(groundtruthFile, firstLine);
 	groundtruthFile.close();
   	
-  	istringstream ss(firstLine);
+	std::istringstream ss(firstLine);
 
   	// Read groundtruth like a dumb
   	float x1, y1, x2, y2, x3, y3, x4, y4;
@@ -84,56 +74,54 @@ int main(int argc, char* argv[]){
 	ss >> y4; 
 
 	// Using min and max of X and Y for groundtruth rectangle
-	float xMin =  min(x1, min(x2, min(x3, x4)));
-	float yMin =  min(y1, min(y2, min(y3, y4)));
-	float width = max(x1, max(x2, max(x3, x4))) - xMin;
-	float height = max(y1, max(y2, max(y3, y4))) - yMin;
-
+	float xMin =  std::min(x1, std::min(x2, std::min(x3, x4)));
+	float yMin =  std::min(y1, std::min(y2, std::min(y3, y4)));
+	float width = std::max(x1, std::max(x2, std::max(x3, x4))) - xMin;
+	float height = std::max(y1, std::max(y2, std::max(y3, y4))) - yMin;
 	
 	// Read Images
-	ifstream listFramesFile;
-	string listFrames = "images.txt";
+	std::ifstream listFramesFile;
+	std::string listFrames = parser.get<std::string>("images");
 	listFramesFile.open(listFrames);
-	string frameName;
-
 
 	// Write Results
-	ofstream resultsFile;
-	string resultsPath = "output.txt";
+	std::ofstream resultsFile;
+	std::string resultsPath = parser.get<std::string>("output");
 	resultsFile.open(resultsPath);
 
 	// Frame counter
 	int nFrames = 0;
 
-
-	while ( getline(listFramesFile, frameName) ){
-		frameName = frameName;
-
+	std::string frameName;
+	cv::Mat frame;
+	while (getline(listFramesFile, frameName))
+	{
 		// Read each frame from the list
-		frame = imread(frameName, CV_LOAD_IMAGE_COLOR);
+		frame = cv::imread(frameName, cv::IMREAD_COLOR);
 
 		// First frame, give the groundtruth to the tracker
-		if (nFrames == 0) {
-			tracker.init( Rect(xMin, yMin, width, height), frame );
-			rectangle( frame, Point( xMin, yMin ), Point( xMin+width, yMin+height), Scalar( 0, 255, 255 ), 1, 8 );
-			resultsFile << xMin << "," << yMin << "," << width << "," << height << endl;
+		if (nFrames == 0)
+		{
+			tracker.init(cv::Rect(xMin, yMin, width, height), frame );
+			rectangle( frame, cv::Point( xMin, yMin ), cv::Point( xMin+width, yMin+height), cv::Scalar( 0, 255, 255 ), 1, 8 );
+			resultsFile << xMin << "," << yMin << "," << width << "," << height << std::endl;
 		}
 		// Update
-		else{
-			result = tracker.update(frame);
-			rectangle( frame, Point( result.x, result.y ), Point( result.x+result.width, result.y+result.height), Scalar( 0, 255, 255 ), 1, 8 );
-			resultsFile << result.x << "," << result.y << "," << result.width << "," << result.height << endl;
+		else
+		{
+			cv::Rect result = tracker.update(frame);
+			rectangle( frame, cv::Point( result.x, result.y ), cv::Point( result.x+result.width, result.y+result.height), cv::Scalar( 0, 255, 255 ), 1, 8 );
+			resultsFile << result.x << "," << result.y << "," << result.width << "," << result.height << std::endl;
 		}
 
 		nFrames++;
 
-		if (!SILENT){
-			imshow("Image", frame);
-			waitKey(1);
+		if (!SILENT)
+		{
+			cv::imshow("Image", frame);
+			cv::waitKey(1);
 		}
 	}
-	resultsFile.close();
 
-	listFile.close();
-
+	return 0;
 }

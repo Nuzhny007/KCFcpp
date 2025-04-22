@@ -1,16 +1,19 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.8)
 project(test)
 
-find_package(OpenCV REQUIRED)
+set(CMAKE_CXX_STANDARD 17)
 
-if(NOT WIN32)
-ADD_DEFINITIONS("-std=c++0x -O3")
-endif(NOT WIN32)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+find_package(OpenCV REQUIRED)
+include_directories(${OpenCV_INCLUDE_DIRS}) 
 
 include_directories(src) 
 FILE(GLOB_RECURSE sourcefiles "src/*.cpp")
-add_executable( KCF ${sourcefiles} )
-target_link_libraries( KCF ${OpenCV_LIBS})
+FILE(GLOB_RECURSE headerfiles "src/*.h*")
+
+add_executable(KCF ${sourcefiles} ${headerfiles})
+target_link_libraries(KCF ${OpenCV_LIBS})
 
 
 

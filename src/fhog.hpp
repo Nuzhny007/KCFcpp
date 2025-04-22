@@ -51,13 +51,7 @@
 #define _FHOG_H_
 
 #include <stdio.h>
-//#include "_lsvmc_types.h"
-//#include "_lsvmc_error.h"
-//#include "_lsvmc_routine.h"
-
-//#include "opencv2/imgproc.hpp"
-#include "opencv2/imgproc/imgproc_c.h"
-
+#include <opencv2/opencv.hpp>
 
 //modified from "_lsvmc_types.h"
 
@@ -78,27 +72,6 @@ typedef struct{
 
 
 #include "float.h"
-
-#define PI    CV_PI
-
-#define EPS 0.000001
-
-#define F_MAX FLT_MAX
-#define F_MIN -FLT_MAX
-
-// The number of elements in bin
-// The number of sectors in gradient histogram building
-#define NUM_SECTOR 9
-
-// The number of levels in image resize procedure
-// We need Lambda levels to resize image twice
-#define LAMBDA 10
-
-// Block size. Used in feature pyramid building procedure
-#define SIDE_LENGTH 8
-
-#define VAL_OF_TRUNCATE 0.2f 
-
 
 //modified from "_lsvm_error.h"
 #define LATENT_SVM_OK 0
@@ -132,7 +105,7 @@ typedef struct{
 // RESULT
 // Error status
 */
-int getFeatureMaps(const IplImage * image, const int k, CvLSVMFeatureMapCaskade **map);
+int getFeatureMaps(const cv::Mat& image, const int k, CvLSVMFeatureMapCaskade **map);
 
 
 /*
@@ -169,8 +142,7 @@ int PCAFeatureMaps(CvLSVMFeatureMapCaskade *map);
 
 //modified from "lsvmc_routine.h"
 
-int allocFeatureMapObject(CvLSVMFeatureMapCaskade **obj, const int sizeX, const int sizeY,
-                          const int p);
+int allocFeatureMapObject(CvLSVMFeatureMapCaskade **obj, const int sizeX, const int sizeY, const int p);
 
 int freeFeatureMapObject (CvLSVMFeatureMapCaskade **obj);
 
